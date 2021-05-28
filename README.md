@@ -1,2 +1,2 @@
 # tidytuesday
-Quick analysis using weekly tidytuesday data.
+Quick analysis using tidytuesday data.

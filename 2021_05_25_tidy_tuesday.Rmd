@@ -1,0 +1,126 @@
+---
+title: "TidyTemplate"
+date: 2021-05-28
+output: html_output
+---
+
+# TidyTuesday
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(tidytuesdayR)
+library(ggthemes)
+library(broom)
+theme_set(theme_tufte())
+
+```
+
+# Load the weekly Data
+
+
+```{r Load}
+
+tt <- tt_load("2021-05-25")
+
+tt
+```
+
+```{r}
+tt
+
+drivers <- tt$drivers
+records <- tt$records
+```
+
+```{r}
+head(drivers)
+```
+
+```{r}
+head(records)
+```
+
+# Brazilian players performance
+
+Only 4 Brazilian players. The best one is Karlo, who has 53 world records.
+
+```{r}
+drivers %>% 
+  filter(nation == "Brazil",
+         !is.na(records)) %>% 
+  group_by(player) %>% 
+  summarize(total_records = sum(records)) %>% 
+  arrange(desc(total_records))
+```
+
+Let's dig into these Karlo's 53 records.
+
+```{r}
+records |>
+  filter(player == "Karlo")
+```
+
+```{r}
+records %>% 
+  filter(player == "Karlo") %>% 
+  group_by(track, type, shortcut) %>% 
+  summarize(total_record_duration = sum(record_duration)) %>% 
+  arrange(desc(total_record_duration))
+```
+He held the record in Luigi Raceway for 2537 days. That is almost 7 years.
+
+```{r}
+records %>% 
+  filter(player == "Karlo",
+         track == "Luigi Raceway",
+         type == "Three Lap",
+         shortcut == "Yes") 
+```
+
+# Effectiveness of shortcuts.
+
+How much time per lap I could save using shortcuts in each track? Where does shortcut is more effective?
+
+- Single Lap type:
+
+```{r}
+records %>% 
+  group_by(type, shortcut) %>% 
+  summarize(avg_time = mean(time)) %>% 
+  ggplot(aes(shortcut, avg_time)) +
+  geom_col() +
+  facet_wrap(~ type)
+```
+
+It looks like getting a shortcut is not that effective when pursuing a record in Single Lap races. Actually, on average, it takes more time using shortcuts than not.
+
+Let's test this finding with a t-student stat.
+
+```{r}
+single <- records %>% 
+  filter(type == "Single Lap") %>% 
+  t.test(time ~ shortcut, data = .) %>% 
+  tidy() %>% 
+  mutate(type = "Single Lap")
+
+
+three <- records %>% 
+  filter(type == "Three Lap") %>% 
+  t.test(time ~ shortcut, data = .) %>% 
+  tidy() %>% 
+  mutate(type = "Three Lap") 
+
+ttest <- bind_rows(single, three)
+
+ggplot(ttest) +
+  geom_point(aes(x = type, y = estimate)) +
+  geom_errorbar(aes(type, ymin = conf.low, ymax = conf.high), width = 0.05) +
+  geom_hline(yintercept = 0, color = "red", linetype = "dashed")
+```
+
+Yeah, while taking a shortcut in a Three Lap race is really effective, on average reducing 57.81 seconds by race, the same is not true for Single Lap races, where taking a shortcut actually increases the lap time by 3.59 seconds, on average. 
+
+
