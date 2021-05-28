@@ -4,31 +4,29 @@ date: 2021-05-28
 output: html_output
 ---
 
-# TidyTuesday
+### TidyTuesday - Week 22
 
-```{r setup, include=FALSE}
+*"The data this week comes from Mario Kart World Records and contains world records for the classic (if you’re a 90’s kid) racing game on the Nintendo 64."*
 
-knitr::opts_chunk$set(echo = TRUE)
+See more at TidyTuesday's [GitHub](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-05-25/readme.md)
 
+```{r message=F, warning=F}
 library(tidyverse)
 library(tidytuesdayR)
 library(ggthemes)
 library(broom)
+library(knitr)
+
 theme_set(theme_tufte())
-
 ```
 
-# Load the weekly Data
+#### Load the weekly Data
 
 
-```{r Load}
+```{r Load, message=F, warning=F}
 
-tt <- tt_load("2021-05-25")
+tt <- tidytuesdayR::tt_load("2021-05-25")
 
-tt
-```
-
-```{r}
 tt
 
 drivers <- tt$drivers
@@ -36,63 +34,71 @@ records <- tt$records
 ```
 
 ```{r}
-head(drivers)
+head(drivers) %>% 
+  kable()
 ```
 
 ```{r}
-head(records)
+head(records) %>% 
+  kable()
 ```
 
-# Brazilian players performance
+### Brazilian players performance
 
-Only 4 Brazilian players. The best one is Karlo, who has 53 world records.
+
 
 ```{r}
 drivers %>% 
   filter(nation == "Brazil",
          !is.na(records)) %>% 
   group_by(player) %>% 
-  summarize(total_records = sum(records)) %>% 
-  arrange(desc(total_records))
+  summarize(total_records = sum(records), .groups = "drop") %>% 
+  arrange(desc(total_records)) %>% 
+  kable()
 ```
+
+Only 4 Brazilian players. The best one is Karlo, who has 53 world records.
 
 Let's dig into these Karlo's 53 records.
 
 ```{r}
 records |>
-  filter(player == "Karlo")
+  filter(player == "Karlo") %>%
+  head() %>% 
+  kable()
 ```
 
 ```{r}
 records %>% 
   filter(player == "Karlo") %>% 
   group_by(track, type, shortcut) %>% 
-  summarize(total_record_duration = sum(record_duration)) %>% 
-  arrange(desc(total_record_duration))
+  summarize(total_record_duration = sum(record_duration), .groups = "drop") %>% 
+  arrange(desc(total_record_duration)) %>% 
+  head(10) %>% 
+  kable()
 ```
+
 He held the record in Luigi Raceway for 2537 days. That is almost 7 years.
 
-```{r}
-records %>% 
-  filter(player == "Karlo",
-         track == "Luigi Raceway",
-         type == "Three Lap",
-         shortcut == "Yes") 
-```
 
-# Effectiveness of shortcuts.
+### Effectiveness of shortcuts
 
-How much time per lap I could save using shortcuts in each track? Where does shortcut is more effective?
+How much time per lap could I save using shortcuts? Where does shortcut is more effective?
 
 - Single Lap type:
 
 ```{r}
 records %>% 
   group_by(type, shortcut) %>% 
-  summarize(avg_time = mean(time)) %>% 
+  summarize(avg_time = mean(time), .groups = "drop") %>% 
   ggplot(aes(shortcut, avg_time)) +
   geom_col() +
-  facet_wrap(~ type)
+  facet_wrap(~ type) +
+  labs(y = "Average Time (seconds)",
+       x = "Using a shortcut?",
+       title = "Average time for single and three laps races using a shortcut or not") +
+  theme(plot.title.position = "plot",
+        plot.title = element_text(face = "bold"))
 ```
 
 It looks like getting a shortcut is not that effective when pursuing a record in Single Lap races. Actually, on average, it takes more time using shortcuts than not.
@@ -118,9 +124,14 @@ ttest <- bind_rows(single, three)
 ggplot(ttest) +
   geom_point(aes(x = type, y = estimate)) +
   geom_errorbar(aes(type, ymin = conf.low, ymax = conf.high), width = 0.05) +
-  geom_hline(yintercept = 0, color = "red", linetype = "dashed")
+  geom_hline(yintercept = 0, color = "red", linetype = "dashed") +
+  labs(y = "Difference in means (95% confidence interval)",
+       x = "Race type",
+       title = "Difference in means test (t.test) with a 95% confidence interval",
+       subtitle = "Difference between average race time using a shortcut or not by both race types") +
+  theme(plot.title.position = "plot",
+        plot.title = element_text(face = "bold"))
+  
 ```
 
 Yeah, while taking a shortcut in a Three Lap race is really effective, on average reducing 57.81 seconds by race, the same is not true for Single Lap races, where taking a shortcut actually increases the lap time by 3.59 seconds, on average. 
-
-
