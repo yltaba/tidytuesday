@@ -1,0 +1,60 @@
+---
+title: "TidyTemplate"
+date: 2021-06-23
+output: html_output
+---
+
+# TidyTuesday
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(tidytuesdayR)
+
+```
+
+# Load the weekly Data
+
+```{r Load}
+
+tt <- tt_load("2021-06-22")
+
+parks <- tt$parks
+```
+
+```{r}
+summary(parks)
+```
+
+```{r}
+head(parks$spend_per_resident_data)
+```
+
+```{r}
+# some numeric variables are character strings
+
+parks$spend_per_resident_data <- as.numeric(gsub("\\$", "", parks$spend_per_resident_data))
+parks$park_pct_city_data <- as.numeric(gsub("%", "", parks$park_pct_city_data))
+parks$pct_near_park_data <- as.numeric(gsub("%", "", parks$pct_near_park_data))
+```
+
+```{r}
+parks |> 
+  count(year)
+```
+
+A posição no ranking está correlacionada com o gasto por residente?
+
+```{r}
+parks |> 
+  ggplot(aes(rank, spend_per_resident_data)) + 
+  geom_point(aes(color = year)) +
+  geom_smooth(se=FALSE, method = "lm") +
+  stat_regline_equation(label.x = 70) +
+  stat_cor(label.y = 350, label.x = 70, aes(label = paste(..rr.label.., ..p.label.., sep = "~`,`~"))) 
+```
+
+
+
